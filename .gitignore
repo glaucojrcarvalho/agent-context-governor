@@ -1,0 +1,26 @@
+node_modules/
+dist/
+coverage/
+*.log
+.DS_Store
+*.tsbuildinfo
+
+# Local environment and secrets
+.env
+.env.*
+!.env.example
+.npmrc
+*.local
+
+# Editors
+.idea/
+.vscode/
+
+# OS and temp files
+Thumbs.db
+tmp/
+temp/
+
+# Local benchmark iterations
+examples/repo-review-v*.json
+examples/repo-review-report-v*.md

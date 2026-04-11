@@ -1,0 +1,43 @@
+{
+  "title": "Sample Real Session",
+  "description": "Example custom scenario using real text content instead of mocked token counts.",
+  "budget": {
+    "softLimitTokens": 900,
+    "hardLimitTokens": 1100
+  },
+  "candidates": [
+    {
+      "id": "objective",
+      "kind": "other",
+      "priority": "critical",
+      "content": "Fix the failing login flow in the sample service without changing external behavior."
+    },
+    {
+      "id": "session-service-read",
+      "kind": "file_read",
+      "priority": "high",
+      "metadata": {
+        "source": "src/session/service.ts"
+      },
+      "content": "export async function refreshSession(userId: string) {\n  const session = await loadSession(userId)\n  if (!session) throw new Error('Missing session')\n  return {\n    ...session,\n    expiresAt: Date.now() + 3600_000\n  }\n}\n\nexport async function revokeSession(userId: string) {\n  return deleteSession(userId)\n}\n"
+    },
+    {
+      "id": "grep-results",
+      "kind": "search_result",
+      "priority": "medium",
+      "metadata": {
+        "source": "rg refreshSession"
+      },
+      "content": "src/session/service.ts:1:export async function refreshSession(userId: string) {\nsrc/session/controller.ts:14:  const session = await refreshSession(userId)\ntest/session.spec.ts:48:  await refreshSession(userId)\n"
+    },
+    {
+      "id": "test-log",
+      "kind": "shell_output",
+      "priority": "medium",
+      "metadata": {
+        "source": "pnpm test session.spec.ts"
+      },
+      "content": "FAIL test/session.spec.ts\n  session refresh\n    expected 200\n    received 500\nError: Missing session\n    at refreshSession (src/session/service.ts:3:23)\n"
+    }
+  ]
+}
