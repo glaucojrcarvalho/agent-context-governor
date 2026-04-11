@@ -74,6 +74,71 @@ test('config overrides affect candidate ordering and optimization', () => {
   assert.equal(result.decisions[0]?.candidateId, 'refactor-objective')
 })
 
+test('review mode keeps a minimum implementation slice under pressure', () => {
+  const governor = new ContextGovernor(DEFAULT_GOVERNOR_CONFIG)
+  const result = governor.optimize({
+    mode: 'review',
+    budget: {
+      softLimitTokens: 120,
+      hardLimitTokens: 240,
+    },
+    candidates: [
+      {
+        id: 'objective',
+        kind: 'other',
+        priority: 'critical',
+        tokenEstimate: 20,
+        content: 'Review this repository for architecture and security.',
+        metadata: { source: 'objective' },
+      },
+      {
+        id: 'readme',
+        kind: 'file_read',
+        priority: 'high',
+        tokenEstimate: 80,
+        content: 'Project overview',
+        metadata: { source: 'README.md' },
+      },
+      {
+        id: 'governor',
+        kind: 'file_read',
+        priority: 'high',
+        tokenEstimate: 60,
+        content: 'ContextGovernor implementation',
+        metadata: { source: 'src/context-governor.ts' },
+      },
+      {
+        id: 'rules',
+        kind: 'file_read',
+        priority: 'high',
+        tokenEstimate: 60,
+        content: 'Rule implementation',
+        metadata: { source: 'src/rules.ts' },
+      },
+      {
+        id: 'input',
+        kind: 'file_read',
+        priority: 'high',
+        tokenEstimate: 60,
+        content: 'Input implementation',
+        metadata: { source: 'src/input.ts' },
+      },
+      {
+        id: 'search',
+        kind: 'search_result',
+        priority: 'medium',
+        tokenEstimate: 200,
+        content: 'Large search output',
+        metadata: { source: 'rg token' },
+      },
+    ],
+  })
+
+  assert.ok(result.decisions.some(decision => decision.candidateId === 'governor' && decision.type === 'keep'))
+  assert.ok(result.decisions.some(decision => decision.candidateId === 'rules' && decision.type === 'keep'))
+  assert.ok(result.decisions.some(decision => decision.candidateId === 'input' && decision.type === 'keep'))
+})
+
 test('input parser estimates tokens from content when omitted', () => {
   const scenario = parseScenarioFile(
     resolve('examples/sample-session.json'),
@@ -88,6 +153,22 @@ test('estimateTokens returns stable positive values for non-empty text', () => {
   assert.equal(estimateTokens(''), 0)
   assert.equal(estimateTokens('abcd'), 1)
   assert.equal(estimateTokens('abcdefgh'), 2)
+})
+
+test('context governor rejects malformed public input', () => {
+  const governor = new ContextGovernor(DEFAULT_GOVERNOR_CONFIG)
+
+  assert.throws(
+    () =>
+      governor.optimize({
+        budget: {
+          softLimitTokens: 100,
+          hardLimitTokens: 50,
+        },
+        candidates: [],
+      }),
+    /Invalid "budget"|Invalid "candidates"/,
+  )
 })
 
 test('repo review import options include common repo files when present', () => {

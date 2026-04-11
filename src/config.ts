@@ -14,6 +14,11 @@ export type GovernorConfig = {
   replacement: ReplacementConfig
   priority: PriorityConfig
   protectedSources?: string[]
+  review?: {
+    preserveSourcePatterns: string[]
+    implementationSourcePatterns: string[]
+    minimumImplementationCandidates: number
+  }
 }
 
 export const DEFAULT_GOVERNOR_CONFIG: GovernorConfig = {
@@ -60,6 +65,20 @@ export const DEFAULT_GOVERNOR_CONFIG: GovernorConfig = {
     'src/cli.ts',
     'src/claude.ts',
   ],
+  review: {
+    preserveSourcePatterns: [
+      'src/context-governor.ts',
+      'src/rules.ts',
+      'src/input.ts',
+      'src/importer.ts',
+      'src/claude.ts',
+      'src/report.ts',
+    ],
+    implementationSourcePatterns: [
+      'src/',
+    ],
+    minimumImplementationCandidates: 3,
+  },
 }
 
 export function mergeGovernorConfig(
@@ -95,5 +114,19 @@ export function mergeGovernorConfig(
     },
     protectedSources:
       override.protectedSources ?? DEFAULT_GOVERNOR_CONFIG.protectedSources,
+    review: {
+      preserveSourcePatterns:
+        override.review?.preserveSourcePatterns ??
+        DEFAULT_GOVERNOR_CONFIG.review?.preserveSourcePatterns ??
+        [],
+      implementationSourcePatterns:
+        override.review?.implementationSourcePatterns ??
+        DEFAULT_GOVERNOR_CONFIG.review?.implementationSourcePatterns ??
+        [],
+      minimumImplementationCandidates:
+        override.review?.minimumImplementationCandidates ??
+        DEFAULT_GOVERNOR_CONFIG.review?.minimumImplementationCandidates ??
+        0,
+    },
   }
 }

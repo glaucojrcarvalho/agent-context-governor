@@ -15,8 +15,10 @@ Current capabilities:
 - estimate prompt-size pressure from imported context
 - rank and filter context candidates under a token budget
 - replace bulky artifacts with compact surrogates
+- preserve a minimum implementation slice for review-style runs
 - benchmark raw versus optimized context with the local `claude` CLI
 - generate repo-review scenarios with a low-friction CLI flow
+- separate prompt, cache, and cost metrics in review reports
 
 Current goals:
 
@@ -65,7 +67,7 @@ npx acg review-report ./acg-repo-review.json --out ./review-report.md
 
 - this is not yet a live runtime integration
 - token estimates are still heuristic
-- real Claude benchmarks are useful, but cache-token totals are not yet a stable primary metric
+- real Claude benchmarks are useful, but cache-token totals are still informational rather than the primary metric
 - quality preservation for review-style tasks still needs work
 
 ## Repository Basics

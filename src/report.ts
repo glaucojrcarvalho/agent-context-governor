@@ -19,6 +19,10 @@ function normalizeFinding(text: string): string {
     .trim()
 }
 
+function formatUsd(value: number | undefined): string {
+  return typeof value === 'number' ? value.toFixed(6) : 'unknown'
+}
+
 const FINDING_TOPICS: Record<string, string[]> = {
   token_estimation: ['estimateTokens', 'token estimation', 'tokenizer', 'hardcoded / 4'],
   claude_api_surface: ['claude.ts', 'public api', 'public index', 'spawnsync', 'claude binary'],
@@ -116,12 +120,19 @@ export function writeClaudeReviewReport(
     ``,
     `## Usage`,
     ``,
-    `- Saved input tokens: ${result.savedInputTokens}`,
+    `- Saved prompt input tokens: ${result.savedInputTokens}`,
+    `- Saved output tokens: ${result.savedOutputTokens}`,
+    `- Saved non-cache tokens: ${result.savedNonCacheTokens}`,
     `- Saved cache creation tokens: ${result.savedCacheCreationTokens}`,
     `- Saved cache read tokens: ${result.savedCacheReadTokens}`,
-    `- Saved total tokens: ${result.savedTotalTokens}`,
-    `- Baseline cost USD: ${result.baseline.totalCostUsd ?? 'unknown'}`,
-    `- Optimized cost USD: ${result.optimized.totalCostUsd ?? 'unknown'}`,
+    `- Observed total token delta: ${result.savedTotalTokens}`,
+    `- Baseline observed total tokens: ${result.baselineObservedTotalTokens}`,
+    `- Optimized observed total tokens: ${result.optimizedObservedTotalTokens}`,
+    `- Cost delta USD: ${formatUsd(result.costDeltaUsd)}`,
+    `- Baseline cost USD: ${formatUsd(result.baseline.totalCostUsd)}`,
+    `- Optimized cost USD: ${formatUsd(result.optimized.totalCostUsd)}`,
+    ``,
+    `Note: observed total token delta includes Claude cache effects and is less stable across runs than prompt-input and cost deltas.`,
     ``,
     `## Overlap Summary`,
     ``,

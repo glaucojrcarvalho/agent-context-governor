@@ -3,7 +3,10 @@ import { readFileSync } from 'node:fs'
 import type {
   BenchmarkScenario,
   ContextArtifactKind,
+  ContextBudget,
+  ContextCandidate,
   ContextCandidatePriority,
+  GovernorInput,
   InputCandidate,
   InputScenario,
 } from './types.js'
@@ -29,6 +32,36 @@ export function estimateTokens(text: string): number {
   const normalized = text.trim()
   if (normalized.length === 0) return 0
   return Math.ceil(normalized.length / 4)
+}
+
+function normalizeBudget(budget: unknown): ContextBudget {
+  const data = assertObject(budget, 'budget')
+  const softLimitTokens = data.softLimitTokens
+  const hardLimitTokens = data.hardLimitTokens
+
+  if (
+    typeof softLimitTokens !== 'number' ||
+    typeof hardLimitTokens !== 'number' ||
+    !Number.isFinite(softLimitTokens) ||
+    !Number.isFinite(hardLimitTokens) ||
+    softLimitTokens <= 0 ||
+    hardLimitTokens <= 0
+  ) {
+    throw new Error(
+      'Invalid "budget": expected positive numeric softLimitTokens and hardLimitTokens',
+    )
+  }
+
+  if (hardLimitTokens < softLimitTokens) {
+    throw new Error(
+      'Invalid "budget": hardLimitTokens must be greater than or equal to softLimitTokens',
+    )
+  }
+
+  return {
+    softLimitTokens,
+    hardLimitTokens,
+  }
 }
 
 function assertString(value: unknown, field: string): string {
@@ -74,6 +107,10 @@ function normalizeCandidate(
       ? inputCandidate.tokenEstimate
       : estimateTokens(content)
 
+  if (!Number.isFinite(tokenEstimate) || tokenEstimate < 0) {
+    throw new Error(`Invalid "${id}.tokenEstimate": expected non-negative finite number`)
+  }
+
   return {
     id,
     kind: kind as ContextArtifactKind,
@@ -93,31 +130,37 @@ function normalizeCandidate(
   }
 }
 
+export function validateGovernorInput(input: GovernorInput): GovernorInput {
+  const budget = normalizeBudget(input.budget)
+
+  if (!Array.isArray(input.candidates) || input.candidates.length === 0) {
+    throw new Error('Invalid "candidates": expected a non-empty array')
+  }
+
+  const ids = new Set<string>()
+  const candidates = input.candidates.map((candidate, index) => {
+    const normalized = normalizeCandidate(candidate, index)
+
+    if (ids.has(normalized.id)) {
+      throw new Error(`Invalid "candidates": duplicate id "${normalized.id}"`)
+    }
+    ids.add(normalized.id)
+
+    return normalized as ContextCandidate
+  })
+
+  return {
+    ...input,
+    budget,
+    candidates,
+  }
+}
+
 export function parseScenarioFile(filePath: string): BenchmarkScenario {
   const raw = readFileSync(filePath, 'utf8')
   const parsed = JSON.parse(raw) as InputScenario
   const data = assertObject(parsed, 'root')
-  const budget = assertObject(data.budget, 'budget')
-
-  const softLimitTokens = budget.softLimitTokens
-  const hardLimitTokens = budget.hardLimitTokens
-
-  if (
-    typeof softLimitTokens !== 'number' ||
-    typeof hardLimitTokens !== 'number' ||
-    softLimitTokens <= 0 ||
-    hardLimitTokens <= 0
-  ) {
-    throw new Error(
-      'Invalid "budget": expected positive numeric softLimitTokens and hardLimitTokens',
-    )
-  }
-
-  if (hardLimitTokens < softLimitTokens) {
-    throw new Error(
-      'Invalid "budget": hardLimitTokens must be greater than or equal to softLimitTokens',
-    )
-  }
+  const budget = normalizeBudget(data.budget)
 
   if (!Array.isArray(data.candidates) || data.candidates.length === 0) {
     throw new Error('Invalid "candidates": expected a non-empty array')
@@ -134,10 +177,8 @@ export function parseScenarioFile(filePath: string): BenchmarkScenario {
         : 'Custom Scenario',
     description:
       typeof data.description === 'string' ? data.description : '',
-    budget: {
-      softLimitTokens,
-      hardLimitTokens,
-    },
+    budget,
     candidates: data.candidates.map(normalizeCandidate),
+    mode: data.mode === 'review' ? 'review' : 'default',
   }
 }

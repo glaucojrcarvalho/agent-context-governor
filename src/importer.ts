@@ -15,6 +15,7 @@ export type ImportOptions = {
   logPaths: string[]
   searchPatterns: string[]
   searchRoot: string
+  mode?: 'default' | 'review'
 }
 
 const DEFAULT_REPO_REVIEW_READ_PATHS = [
@@ -65,9 +66,29 @@ function createCandidate(args: {
 function readSearchResults(pattern: string, searchRoot: string): string {
   const result = spawnSync(
     'rg',
-    ['-n', '--no-heading', pattern, searchRoot],
-    { encoding: 'utf8' },
+    [
+      '-n',
+      '--no-heading',
+      '--max-count',
+      '200',
+      '--max-columns',
+      '240',
+      '--glob',
+      '!examples/repo-review*.json',
+      '--glob',
+      '!examples/repo-review-report*.md',
+      pattern,
+      searchRoot,
+    ],
+    {
+      encoding: 'utf8',
+      maxBuffer: 10 * 1024 * 1024,
+    },
   )
+
+  if (result.error) {
+    throw new Error(result.error.message)
+  }
 
   if (result.status !== 0 && result.status !== 1) {
     throw new Error(result.stderr || `rg failed for pattern: ${pattern}`)
@@ -139,6 +160,7 @@ export function buildImportedScenario(options: ImportOptions): BenchmarkScenario
       hardLimitTokens: options.hardLimitTokens,
     },
     candidates,
+    mode: options.mode ?? 'default',
   }
 }
 
@@ -170,6 +192,7 @@ export function buildRepoReviewImportOptions(args: {
     logPaths: [],
     searchPatterns: DEFAULT_REPO_REVIEW_SEARCH_PATTERNS,
     searchRoot: rootDir,
+    mode: 'review',
   }
 }
 

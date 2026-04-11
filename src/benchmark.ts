@@ -12,6 +12,7 @@ export function runScenario(
   const result = governor.optimize({
     candidates: scenario.candidates,
     budget: scenario.budget,
+    mode: scenario.mode,
   })
   const savings = reporter.createReport(
     result.baselineTokens,

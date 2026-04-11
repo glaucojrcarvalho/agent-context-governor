@@ -89,6 +89,15 @@ function parseClaudeResult(stdout: string): ClaudeUsageResult {
   }
 }
 
+function getObservedTotal(result: ClaudeUsageResult): number {
+  return (
+    result.inputTokens +
+    result.cacheCreationInputTokens +
+    result.cacheReadInputTokens +
+    result.outputTokens
+  )
+}
+
 export function runClaudeBenchmark(
   scenario: BenchmarkScenario,
   options?: {
@@ -132,28 +141,33 @@ export function runClaudeBenchmark(
 
   const baseline = runClaude(baselinePrompt)
   const optimizedUsage = runClaude(optimizedPrompt)
-
-  const baselineTotal =
-    baseline.inputTokens +
-    baseline.cacheCreationInputTokens +
-    baseline.cacheReadInputTokens +
-    baseline.outputTokens
-  const optimizedTotal =
-    optimizedUsage.inputTokens +
-    optimizedUsage.cacheCreationInputTokens +
-    optimizedUsage.cacheReadInputTokens +
-    optimizedUsage.outputTokens
+  const baselineObservedTotal = getObservedTotal(baseline)
+  const optimizedObservedTotal = getObservedTotal(optimizedUsage)
+  const baselineCost = baseline.totalCostUsd
+  const optimizedCost = optimizedUsage.totalCostUsd
 
   return {
     baseline,
     optimized: optimizedUsage,
     savedInputTokens: baseline.inputTokens - optimizedUsage.inputTokens,
+    savedOutputTokens: baseline.outputTokens - optimizedUsage.outputTokens,
+    savedNonCacheTokens:
+      baseline.inputTokens +
+      baseline.outputTokens -
+      optimizedUsage.inputTokens -
+      optimizedUsage.outputTokens,
     savedCacheCreationTokens:
       baseline.cacheCreationInputTokens -
       optimizedUsage.cacheCreationInputTokens,
     savedCacheReadTokens:
       baseline.cacheReadInputTokens - optimizedUsage.cacheReadInputTokens,
-    savedTotalTokens: baselineTotal - optimizedTotal,
+    savedTotalTokens: baselineObservedTotal - optimizedObservedTotal,
+    baselineObservedTotalTokens: baselineObservedTotal,
+    optimizedObservedTotalTokens: optimizedObservedTotal,
+    costDeltaUsd:
+      typeof baselineCost === 'number' && typeof optimizedCost === 'number'
+        ? baselineCost - optimizedCost
+        : undefined,
   }
 }
 

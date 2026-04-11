@@ -1,6 +1,5 @@
 import type {
   ContextCandidate,
-  ContextCandidatePriority,
   OptimizationDecision,
 } from './types.js'
 import type { GovernorConfig } from './config.js'
@@ -10,6 +9,8 @@ export type RuleContext = {
   hardLimitTokens: number
   runningTokens: number
   config: GovernorConfig
+  mode: 'default' | 'review'
+  preservedImplementationCount: number
 }
 
 export type RuleAction =
@@ -33,16 +34,32 @@ export function compareCandidates(
   left: ContextCandidate,
   right: ContextCandidate,
   config: GovernorConfig,
+  mode: 'default' | 'review' = 'default',
 ): number {
+  const priorityDelta =
+    config.priority.scores[right.priority] - config.priority.scores[left.priority]
+  if (priorityDelta !== 0) return priorityDelta
+
+  if (mode === 'review') {
+    const leftReviewPreferred = isReviewPreserveSource(left, config)
+    const rightReviewPreferred = isReviewPreserveSource(right, config)
+    if (leftReviewPreferred !== rightReviewPreferred) {
+      return rightReviewPreferred ? 1 : -1
+    }
+
+    const leftImplementation = isImplementationSource(left, config)
+    const rightImplementation = isImplementationSource(right, config)
+    if (leftImplementation !== rightImplementation) {
+      return rightImplementation ? 1 : -1
+    }
+  }
+
   const leftProtected = isProtectedSource(left, config)
   const rightProtected = isProtectedSource(right, config)
   if (leftProtected !== rightProtected) {
     return rightProtected ? 1 : -1
   }
 
-  const priorityDelta =
-    config.priority.scores[right.priority] - config.priority.scores[left.priority]
-  if (priorityDelta !== 0) return priorityDelta
   return left.tokenEstimate - right.tokenEstimate
 }
 
@@ -58,6 +75,26 @@ export function isProtectedSource(
 ): boolean {
   const source = getSource(candidate)
   return (config.protectedSources ?? []).some(pattern =>
+    source.includes(pattern),
+  )
+}
+
+export function isReviewPreserveSource(
+  candidate: ContextCandidate,
+  config: GovernorConfig,
+): boolean {
+  const source = getSource(candidate)
+  return (config.review?.preserveSourcePatterns ?? []).some(pattern =>
+    source.includes(pattern),
+  )
+}
+
+export function isImplementationSource(
+  candidate: ContextCandidate,
+  config: GovernorConfig,
+): boolean {
+  const source = getSource(candidate)
+  return (config.review?.implementationSourcePatterns ?? []).some(pattern =>
     source.includes(pattern),
   )
 }
@@ -115,6 +152,33 @@ export function evaluateCandidate(
         type: 'keep',
         tokenCost: candidate.tokenEstimate,
         reason: 'critical task context',
+      }
+    }
+  }
+
+  if (context.mode === 'review' && isReviewPreserveSource(candidate, context.config)) {
+    const nextTotal = context.runningTokens + candidate.tokenEstimate
+    if (nextTotal <= context.hardLimitTokens) {
+      return {
+        type: 'keep',
+        tokenCost: candidate.tokenEstimate,
+        reason: 'review-preserved source',
+      }
+    }
+  }
+
+  if (
+    context.mode === 'review' &&
+    isImplementationSource(candidate, context.config) &&
+    context.preservedImplementationCount <
+      (context.config.review?.minimumImplementationCandidates ?? 0)
+  ) {
+    const nextTotal = context.runningTokens + candidate.tokenEstimate
+    if (nextTotal <= context.hardLimitTokens) {
+      return {
+        type: 'keep',
+        tokenCost: candidate.tokenEstimate,
+        reason: 'review implementation floor',
       }
     }
   }

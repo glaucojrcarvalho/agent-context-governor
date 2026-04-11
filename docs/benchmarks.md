@@ -32,6 +32,7 @@ Current caution:
 - raw cache-token totals from Claude are not yet reliable enough to be the primary savings metric across runs
 - cost deltas and non-cache input deltas are easier to compare honestly today
 - review-quality retention still needs stronger evaluation than exact bullet overlap
+- review-mode runs should preserve a minimum implementation slice or the comparison becomes misleading
 
 ## First Benchmark Scenarios
 

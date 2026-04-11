@@ -33,6 +33,8 @@ export type ContextBudget = {
   hardLimitTokens: number
 }
 
+export type GovernorMode = 'default' | 'review'
+
 export type OptimizationDecision =
   | {
       type: 'keep'
@@ -54,6 +56,7 @@ export type OptimizationDecision =
 export type GovernorInput = {
   candidates: ContextCandidate[]
   budget: ContextBudget
+  mode?: GovernorMode
 }
 
 export type GovernorResult = {
@@ -76,6 +79,7 @@ export type BenchmarkScenario = {
   description: string
   budget: ContextBudget
   candidates: ContextCandidate[]
+  mode?: GovernorMode
 }
 
 export type InputCandidate = Omit<ContextCandidate, 'tokenEstimate'> & {
@@ -88,6 +92,7 @@ export type InputScenario = {
   description?: string
   budget: ContextBudget
   candidates: InputCandidate[]
+  mode?: GovernorMode
 }
 
 export type BenchmarkResult = {
@@ -115,9 +120,14 @@ export type ClaudeComparisonResult = {
   baseline: ClaudeUsageResult
   optimized: ClaudeUsageResult
   savedInputTokens: number
+  savedOutputTokens: number
+  savedNonCacheTokens: number
   savedCacheCreationTokens: number
   savedCacheReadTokens: number
   savedTotalTokens: number
+  baselineObservedTotalTokens: number
+  optimizedObservedTotalTokens: number
+  costDeltaUsd?: number
 }
 
 export type ClaudePromptMode = 'benchmark' | 'review'
