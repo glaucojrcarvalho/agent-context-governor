@@ -9,7 +9,7 @@ import { getDefaultScenarios } from '../src/fixtures.js'
 import { estimateTokens, parseScenarioFile } from '../src/input.js'
 import { buildRepoReviewImportOptions } from '../src/importer.js'
 
-test('context governor reduces token count under pressure', () => {
+void test('context governor reduces token count under pressure', () => {
   const scenario = getDefaultScenarios()[0]
   assert.ok(scenario, 'expected built-in scenario')
 
@@ -20,7 +20,7 @@ test('context governor reduces token count under pressure', () => {
   assert.ok(result.decisions.some(decision => decision.type === 'replace'))
 })
 
-test('context governor keeps critical context in final payload', () => {
+void test('context governor keeps critical context in final payload', () => {
   const governor = new ContextGovernor(DEFAULT_GOVERNOR_CONFIG)
   const result = governor.optimize({
     budget: {
@@ -49,7 +49,7 @@ test('context governor keeps critical context in final payload', () => {
   assert.ok(result.finalContext.length > 0)
 })
 
-test('config overrides affect candidate ordering and optimization', () => {
+void test('config overrides affect candidate ordering and optimization', () => {
   const scenario = getDefaultScenarios()[1]
   assert.ok(scenario, 'expected built-in scenario')
 
@@ -74,7 +74,7 @@ test('config overrides affect candidate ordering and optimization', () => {
   assert.equal(result.decisions[0]?.candidateId, 'refactor-objective')
 })
 
-test('review mode keeps a minimum implementation slice under pressure', () => {
+void test('review mode keeps a minimum implementation slice under pressure', () => {
   const governor = new ContextGovernor(DEFAULT_GOVERNOR_CONFIG)
   const result = governor.optimize({
     mode: 'review',
@@ -139,7 +139,7 @@ test('review mode keeps a minimum implementation slice under pressure', () => {
   assert.ok(result.decisions.some(decision => decision.candidateId === 'input' && decision.type === 'keep'))
 })
 
-test('input parser estimates tokens from content when omitted', () => {
+void test('input parser estimates tokens from content when omitted', () => {
   const scenario = parseScenarioFile(
     resolve('examples/sample-session.json'),
   )
@@ -149,13 +149,13 @@ test('input parser estimates tokens from content when omitted', () => {
   assert.ok(scenario.candidates.every(candidate => candidate.tokenEstimate > 0))
 })
 
-test('estimateTokens returns stable positive values for non-empty text', () => {
+void test('estimateTokens returns stable positive values for non-empty text', () => {
   assert.equal(estimateTokens(''), 0)
   assert.equal(estimateTokens('abcd'), 1)
   assert.equal(estimateTokens('abcdefgh'), 2)
 })
 
-test('context governor rejects malformed public input', () => {
+void test('context governor rejects malformed public input', () => {
   const governor = new ContextGovernor(DEFAULT_GOVERNOR_CONFIG)
 
   assert.throws(
@@ -171,7 +171,7 @@ test('context governor rejects malformed public input', () => {
   )
 })
 
-test('repo review import options include common repo files when present', () => {
+void test('repo review import options include common repo files when present', () => {
   const options = buildRepoReviewImportOptions({
     rootDir: resolve('.'),
   })
