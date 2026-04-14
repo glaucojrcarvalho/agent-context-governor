@@ -4,7 +4,6 @@ import type {
   BenchmarkScenario,
   ContextArtifactKind,
   ContextBudget,
-  ContextCandidate,
   ContextCandidatePriority,
   GovernorInput,
   InputCandidate,
@@ -146,7 +145,7 @@ export function validateGovernorInput(input: GovernorInput): GovernorInput {
     }
     ids.add(normalized.id)
 
-    return normalized as ContextCandidate
+    return normalized
   })
 
   return {
