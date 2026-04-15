@@ -131,3 +131,8 @@ export type ClaudeComparisonResult = {
 }
 
 export type ClaudePromptMode = 'benchmark' | 'review'
+
+// Function signature for token estimation. The built-in estimateTokens() is a
+// dependency-free heuristic. Pass a custom implementation (e.g. wrapping tiktoken
+// or Claude's count_tokens API) anywhere an estimator is accepted to get exact counts.
+export type TokenEstimatorFn = (text: string) => number

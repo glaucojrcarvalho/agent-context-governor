@@ -8,6 +8,7 @@ import type {
   GovernorInput,
   InputCandidate,
   InputScenario,
+  TokenEstimatorFn,
 } from './types.js'
 
 const VALID_KINDS: ContextArtifactKind[] = [
@@ -27,10 +28,25 @@ const VALID_PRIORITIES: ContextCandidatePriority[] = [
   'low',
 ]
 
+// Estimates token count without external dependencies.
+//
+// Uses the higher of two signals:
+//   - chars / 4: accurate for long words and tightly packed text
+//   - words + symbols: accurate for code, where operators and punctuation
+//     each become their own BPE token regardless of character length
+//
+// This outperforms the naive chars/4 heuristic for code-heavy content
+// (shell output, file reads, search results) which is the primary use case.
+// For exact counts, pass a custom TokenEstimatorFn wrapping tiktoken or
+// Claude's count_tokens API endpoint.
 export function estimateTokens(text: string): number {
   const normalized = text.trim()
   if (normalized.length === 0) return 0
-  return Math.ceil(normalized.length / 4)
+
+  const words = normalized.split(/\s+/).length
+  const symbols = (normalized.match(/[{}()[\];:.<>!@#$%^&*|/\\=+\-`~,]/g) ?? []).length
+
+  return Math.ceil(Math.max(normalized.length / 4, words + symbols))
 }
 
 function normalizeBudget(budget: unknown): ContextBudget {
@@ -80,6 +96,7 @@ function assertObject(value: unknown, field: string): Record<string, unknown> {
 function normalizeCandidate(
   candidate: unknown,
   index: number,
+  estimator: TokenEstimatorFn = estimateTokens,
 ): BenchmarkScenario['candidates'][number] {
   const data = assertObject(candidate, `candidates[${index}]`)
   const id = assertString(data.id, `candidates[${index}].id`)
@@ -104,7 +121,7 @@ function normalizeCandidate(
   const tokenEstimate =
     typeof inputCandidate.tokenEstimate === 'number'
       ? inputCandidate.tokenEstimate
-      : estimateTokens(content)
+      : estimator(content)
 
   if (!Number.isFinite(tokenEstimate) || tokenEstimate < 0) {
     throw new Error(`Invalid "${id}.tokenEstimate": expected non-negative finite number`)
@@ -155,7 +172,10 @@ export function validateGovernorInput(input: GovernorInput): GovernorInput {
   }
 }
 
-export function parseScenarioFile(filePath: string): BenchmarkScenario {
+export function parseScenarioFile(
+  filePath: string,
+  estimator: TokenEstimatorFn = estimateTokens,
+): BenchmarkScenario {
   const raw = readFileSync(filePath, 'utf8')
   const parsed = JSON.parse(raw) as InputScenario
   const data = assertObject(parsed, 'root')
@@ -177,7 +197,7 @@ export function parseScenarioFile(filePath: string): BenchmarkScenario {
     description:
       typeof data.description === 'string' ? data.description : '',
     budget,
-    candidates: data.candidates.map(normalizeCandidate),
+    candidates: data.candidates.map((c, i) => normalizeCandidate(c, i, estimator)),
     mode: data.mode === 'review' ? 'review' : 'default',
   }
 }
