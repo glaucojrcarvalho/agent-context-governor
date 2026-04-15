@@ -156,6 +156,33 @@ void test('estimateTokens returns stable positive values for non-empty text', ()
   assert.equal(estimateTokens('abcdefgh'), 2)
 })
 
+void test('estimateTokens produces higher counts for code than prose of equal length', () => {
+  // Code has many symbols (operators, brackets, semicolons) that each become
+  // their own BPE token, so the same character count should yield more tokens.
+  const prose = 'The governor reduces token usage in coding agent workflows today'
+  const code = 'function reduce(tokens: Token[]): Token[] { return tokens.filter(t => t); }'
+
+  // Both strings are similar in length but code should score higher
+  assert.ok(
+    prose.length > 0 && code.length > 0,
+    'test strings must be non-empty',
+  )
+  assert.ok(
+    estimateTokens(code) > estimateTokens(prose),
+    `code (${estimateTokens(code)}) should estimate more tokens than prose (${estimateTokens(prose)}) of similar length`,
+  )
+})
+
+void test('estimateTokens accepts a custom estimator via parseScenarioFile', () => {
+  // Verify the estimator parameter is threaded through: a constant estimator
+  // should override the built-in heuristic for candidates without tokenEstimate.
+  const alwaysTen = (): number => 10
+  const scenario = parseScenarioFile(resolve('examples/sample-session.json'), alwaysTen)
+  // All candidates that had no explicit tokenEstimate should now report 10
+  const withoutExplicit = scenario.candidates.filter(c => c.tokenEstimate === 10)
+  assert.ok(withoutExplicit.length > 0, 'custom estimator should be applied to at least one candidate')
+})
+
 void test('context governor rejects malformed public input', () => {
   const governor = new ContextGovernor(DEFAULT_GOVERNOR_CONFIG)
 
